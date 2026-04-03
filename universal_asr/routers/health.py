@@ -15,22 +15,34 @@ async def health():
 
 @router.get("/v1/models")
 async def list_models():
-    """List cached models (OpenAI-compatible format)."""
+    """List all models: loaded (in-memory) + cached (on disk)."""
     cached = model_manager.list_models()
     loaded = transcriber.loaded_models()
-    return {
-        "object": "list",
-        "data": [
-            {
-                "id": m["id"],
+    cached_ids = {m["id"] for m in cached} | {m["name"] for m in cached}
+
+    data = []
+    # Include loaded models that aren't in the cached list
+    # (standard Whisper sizes like "base" that faster-whisper manages)
+    for name in loaded:
+        if name not in cached_ids:
+            data.append({
+                "id": name,
                 "object": "model",
-                "name": m["name"],
-                "size_mb": m["size_mb"],
-                "loaded": m["id"] in loaded or m["name"] in loaded,
-            }
-            for m in cached
-        ],
-    }
+                "name": name,
+                "size_mb": None,
+                "loaded": True,
+            })
+    # Include cached models
+    for m in cached:
+        data.append({
+            "id": m["id"],
+            "object": "model",
+            "name": m["name"],
+            "size_mb": m["size_mb"],
+            "loaded": m["id"] in loaded or m["name"] in loaded,
+        })
+
+    return {"object": "list", "data": data}
 
 
 @router.post("/v1/models/pull")

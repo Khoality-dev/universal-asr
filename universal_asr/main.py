@@ -2,16 +2,19 @@
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-import gradio as gr
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from universal_asr import config
 from universal_asr.models.manager import model_manager
 from universal_asr.routers import health, transcription
-from universal_asr.ui import build_ui
 
 logger = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -36,9 +39,13 @@ app = FastAPI(title="Universal ASR", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(transcription.router)
 
-# Mount Gradio UI at root
-gradio_app = build_ui()
-app = gr.mount_gradio_app(app, gradio_app, path="/")
+
+@app.get("/")
+async def root():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def main():

@@ -43,28 +43,35 @@ class ModelManager:
         """Resolve a model name to a local CT2 model path.
 
         1. If already cached locally, return path.
-        2. If standard Whisper size keyword, let faster-whisper handle download.
+        2. If standard Whisper size keyword, download via faster-whisper into our cache.
         3. Otherwise, download from HuggingFace and auto-convert to CT2.
         """
         cache_path = self._model_cache_path(model_name)
 
-        # Already converted and cached
+        # Already cached
         if os.path.isdir(cache_path) and os.path.exists(os.path.join(cache_path, "model.bin")):
             logger.info("Model cached: %s -> %s", model_name, cache_path)
             return cache_path
 
-        # Standard Whisper sizes — faster-whisper downloads CT2 directly
-        if model_name in _WHISPER_SIZES:
-            logger.info("Standard Whisper model '%s' — faster-whisper will download", model_name)
-            return model_name
-
-        # HuggingFace model — download and convert
         with self._lock:
             # Double-check after acquiring lock
             if os.path.isdir(cache_path) and os.path.exists(os.path.join(cache_path, "model.bin")):
                 return cache_path
-            self._download_and_convert(model_name, cache_path)
+
+            if model_name in _WHISPER_SIZES:
+                self._download_whisper(model_name, cache_path)
+            else:
+                self._download_and_convert(model_name, cache_path)
         return cache_path
+
+    def _download_whisper(self, model_name: str, output_path: str):
+        """Download a standard Whisper model via faster-whisper into our cache."""
+        from faster_whisper.utils import download_model
+
+        logger.info("Downloading standard Whisper model: %s", model_name)
+        os.makedirs(output_path, exist_ok=True)
+        download_model(model_name, output_dir=output_path)
+        logger.info("Whisper model downloaded: %s -> %s", model_name, output_path)
 
     def _download_and_convert(self, model_name: str, output_path: str):
         """Download a HuggingFace transformers Whisper model and convert to CT2."""

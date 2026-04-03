@@ -13,7 +13,7 @@ def _auto_compute_type(device: str) -> str:
 
 
 HOST: str = os.environ.get("UASR_HOST", "0.0.0.0")
-PORT: int = int(os.environ.get("UASR_PORT", "9000"))
+PORT: int = int(os.environ.get("UASR_PORT", "14213"))
 
 _device_env = os.environ.get("UASR_DEVICE", "auto")
 DEVICE: str = _auto_device() if _device_env == "auto" else _device_env

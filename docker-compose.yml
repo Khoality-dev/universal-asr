@@ -3,16 +3,17 @@ services:
     build: .
     container_name: universal-asr
     ports:
-      - "9000:9000"
+      - "14213:14213"
     volumes:
       - ./data:/app/data
     environment:
       - UASR_HOST=0.0.0.0
-      - UASR_PORT=9000
+      - UASR_PORT=14213
       - UASR_DEVICE=auto
       - UASR_COMPUTE_TYPE=auto
       - UASR_DEFAULT_MODEL=base
       - UASR_DATA_DIR=/app/data
+      - HF_TOKEN=${HF_TOKEN}
     deploy:
       resources:
         reservations:

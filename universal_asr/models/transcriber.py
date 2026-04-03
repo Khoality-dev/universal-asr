@@ -58,6 +58,7 @@ class Transcriber:
         model_name: str | None = None,
         language: str | None = None,
         mode: str | None = None,
+        initial_prompt: str | None = None,
     ) -> tuple[str, str]:
         """Transcribe audio.
 
@@ -67,6 +68,8 @@ class Transcriber:
         kwargs: dict = {}
         if language:
             kwargs["language"] = language
+        if initial_prompt:
+            kwargs["initial_prompt"] = initial_prompt
         if mode == "fast":
             kwargs["beam_size"] = 1
             kwargs["without_timestamps"] = True

@@ -17,16 +17,39 @@ router = APIRouter(tags=["transcription"])
 SAMPLE_RATE = 16_000
 
 
+def _decode_audio_av(raw_bytes: bytes) -> tuple[np.ndarray, int]:
+    """Decode audio using PyAV (ffmpeg). Handles webm, mp3, ogg, mp4, etc."""
+    import av
+
+    container = av.open(io.BytesIO(raw_bytes))
+    stream = next(s for s in container.streams if s.type == "audio")
+    frames = []
+    for frame in container.decode(stream):
+        # Resample to mono s16 (int16) at original rate
+        frame_np = frame.to_ndarray().flatten().astype(np.float32)
+        if frame.format.name not in ("flt", "fltp"):
+            frame_np = frame_np / 32768.0
+        frames.append(frame_np)
+    container.close()
+    if not frames:
+        raise ValueError("No audio frames decoded")
+    return np.concatenate(frames), stream.rate or stream.codec_context.sample_rate
+
+
 def _decode_audio(raw_bytes: bytes) -> np.ndarray:
     """Decode audio bytes (wav/mp3/flac/ogg/webm) to float32 mono 16kHz."""
+    # Try soundfile first (fast, handles wav/flac/ogg)
     try:
         audio, sr = sf.read(io.BytesIO(raw_bytes), dtype="float32")
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Could not decode audio. Supported formats: wav, flac, ogg. "
-                   "For mp3/webm, ensure ffmpeg is installed.",
-        )
+        # Fall back to PyAV for webm/mp3/mp4/etc.
+        try:
+            audio, sr = _decode_audio_av(raw_bytes)
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not decode audio. Supported formats: wav, flac, ogg, mp3, webm, mp4.",
+            )
     # Convert stereo to mono
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -94,6 +117,7 @@ async def asr_raw(
     model: str | None = Query(None),
     language: str | None = Query(None),
     mode: str | None = Query(None),
+    initial_prompt: str | None = Query(None),
 ):
     """Raw PCM transcription. Accepts Int16 PCM at 16kHz as octet-stream."""
     try:
@@ -101,6 +125,7 @@ async def asr_raw(
         model_name = model or config.DEFAULT_MODEL
         text, detected_lang = transcriber.transcribe(
             waveform, model_name=model_name, language=language, mode=mode,
+            initial_prompt=initial_prompt,
         )
         return {"text": text, "language": detected_lang}
     except HTTPException:
