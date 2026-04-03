@@ -1,0 +1,23 @@
+services:
+  universal-asr:
+    build: .
+    container_name: universal-asr
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - UASR_HOST=0.0.0.0
+      - UASR_PORT=9000
+      - UASR_DEVICE=auto
+      - UASR_COMPUTE_TYPE=auto
+      - UASR_DEFAULT_MODEL=base
+      - UASR_DATA_DIR=/app/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
