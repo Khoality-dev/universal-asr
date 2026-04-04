@@ -117,7 +117,6 @@ async def asr_raw(
     model: str | None = Query(None),
     language: str | None = Query(None),
     initial_prompt: str | None = Query(None),
-    fast: bool = Query(False),
 ):
     """Raw PCM transcription. Accepts Int16 PCM at 16kHz as octet-stream."""
     try:
@@ -125,7 +124,7 @@ async def asr_raw(
         model_name = model or config.DEFAULT_MODEL
         text, detected_lang = transcriber.transcribe(
             waveform, model_name=model_name, language=language,
-            initial_prompt=initial_prompt, fast=fast,
+            initial_prompt=initial_prompt,
         )
         return {"text": text, "language": detected_lang}
     except HTTPException:
