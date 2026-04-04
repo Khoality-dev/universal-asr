@@ -58,8 +58,12 @@ class Transcriber:
         model_name: str | None = None,
         language: str | None = None,
         initial_prompt: str | None = None,
+        fast: bool = False,
     ) -> tuple[str, str]:
         """Transcribe audio.
+
+        Args:
+            fast: If True, use beam_size=1 and skip timestamps for speed.
 
         Returns (text, detected_language).
         """
@@ -69,6 +73,9 @@ class Transcriber:
             kwargs["language"] = language
         if initial_prompt:
             kwargs["initial_prompt"] = initial_prompt
+        if fast:
+            kwargs["beam_size"] = 1
+            kwargs["without_timestamps"] = True
 
         segments, info = model.transcribe(audio, **kwargs)
         text = "".join(segment.text for segment in segments).strip()
