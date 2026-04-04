@@ -64,7 +64,7 @@ class Transcriber:
         Returns (text, detected_language).
         """
         model = self._get_model(model_name)
-        kwargs: dict = {}
+        kwargs: dict = {"without_timestamps": True}
         if language:
             kwargs["language"] = language
         if initial_prompt:
