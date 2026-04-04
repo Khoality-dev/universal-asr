@@ -57,7 +57,6 @@ class Transcriber:
         audio: np.ndarray,
         model_name: str | None = None,
         language: str | None = None,
-        mode: str | None = None,
         initial_prompt: str | None = None,
     ) -> tuple[str, str]:
         """Transcribe audio.
@@ -70,9 +69,6 @@ class Transcriber:
             kwargs["language"] = language
         if initial_prompt:
             kwargs["initial_prompt"] = initial_prompt
-        if mode == "fast":
-            kwargs["beam_size"] = 1
-            kwargs["without_timestamps"] = True
 
         segments, info = model.transcribe(audio, **kwargs)
         text = "".join(segment.text for segment in segments).strip()

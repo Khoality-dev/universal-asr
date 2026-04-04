@@ -116,7 +116,6 @@ async def asr_raw(
     audio: bytes = Body(..., media_type="application/octet-stream"),
     model: str | None = Query(None),
     language: str | None = Query(None),
-    mode: str | None = Query(None),
     initial_prompt: str | None = Query(None),
 ):
     """Raw PCM transcription. Accepts Int16 PCM at 16kHz as octet-stream."""
@@ -124,7 +123,7 @@ async def asr_raw(
         waveform = _pcm_to_float(audio)
         model_name = model or config.DEFAULT_MODEL
         text, detected_lang = transcriber.transcribe(
-            waveform, model_name=model_name, language=language, mode=mode,
+            waveform, model_name=model_name, language=language,
             initial_prompt=initial_prompt,
         )
         return {"text": text, "language": detected_lang}
