@@ -82,20 +82,29 @@ class Transcriber:
         self,
         audio: np.ndarray,
         model_name: str | None = None,
+        allowed_languages: list[str] | None = None,
     ) -> tuple[str, float, list[tuple[str, float]]]:
         """Detect language from audio.
+
+        Args:
+            allowed_languages: If set, only consider these language codes.
 
         Returns (language, confidence, [(lang, prob), ...]).
         """
         model = self._get_model(model_name)
-        # faster-whisper's detect_language expects features, use first 30s
-        # Pad or trim to 30 seconds (480000 samples at 16kHz)
         target_len = 30 * 16000
         if len(audio) > target_len:
             audio = audio[:target_len]
 
         language, probs, *_ = model.detect_language(audio)
-        # probs is a list of (lang, prob) sorted by probability
+
+        if allowed_languages:
+            # Filter to only allowed languages, pick highest probability
+            filtered = [(l, p) for l, p in probs if l in allowed_languages]
+            if filtered:
+                language = filtered[0][0]  # probs already sorted by probability
+                probs = filtered
+
         confidence = next((p for l, p in probs if l == language), 0.0)
         return language, confidence, probs
 

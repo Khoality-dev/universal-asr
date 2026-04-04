@@ -164,3 +164,25 @@ async def detect_language(
     except Exception as e:
         logger.error("Language detection error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/asr/detect-language")
+async def detect_language_raw(
+    audio: bytes = Body(..., media_type="application/octet-stream"),
+    model: str | None = Query(None),
+    languages: str | None = Query(None),
+):
+    """Detect language from raw PCM. Optional: constrain to comma-separated language codes."""
+    try:
+        waveform = _pcm_to_float(audio)
+        model_name = model or config.DEFAULT_MODEL
+        allowed = [l.strip() for l in languages.split(",") if l.strip()] if languages else None
+        language, confidence, probs = transcriber.detect_language(
+            waveform, model_name=model_name, allowed_languages=allowed,
+        )
+        return {"language": language, "confidence": round(confidence, 4)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Language detection error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
