@@ -38,8 +38,15 @@ async def synthesize(
         tts_model = tts_registry.get_model(model)
 
         ref_audio_bytes = None
+        ref_audio_filename = None
         if ref_audio:
             ref_audio_bytes = await ref_audio.read()
+            ref_audio_filename = ref_audio.filename
+            logger.info("Synthesize: model=%s, text=%d chars, ref_audio=%d bytes (filename=%s), voice_id=%s",
+                        tts_model.model_id, len(text), len(ref_audio_bytes), ref_audio_filename, voice_id)
+        else:
+            logger.info("Synthesize: model=%s, text=%d chars, no ref_audio, voice_id=%s",
+                        tts_model.model_id, len(text), voice_id)
 
         audio_bytes = tts_model.synthesize(
             text=text,
@@ -47,8 +54,10 @@ async def synthesize(
             language=language,
             ref_audio_bytes=ref_audio_bytes,
             ref_text=ref_text,
+            ref_audio_filename=ref_audio_filename,
         )
 
+        logger.info("Synthesize: done, %d bytes audio", len(audio_bytes))
         return Response(
             content=audio_bytes,
             media_type="audio/wav",

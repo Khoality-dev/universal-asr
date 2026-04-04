@@ -63,21 +63,30 @@ class VieNeuTTSModel(BaseTTSModel):
         infer_kwargs: dict = {"text": text}
 
         if ref_audio_bytes:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            # Preserve original extension so VieNeu can detect the format
+            ref_filename = kwargs.get("ref_audio_filename", "")
+            suffix = Path(ref_filename).suffix if ref_filename else ".wav"
+            if not suffix:
+                suffix = ".wav"
+            logger.info("VieNeu: voice cloning with %d bytes ref audio (suffix=%s)", len(ref_audio_bytes), suffix)
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                 tmp.write(ref_audio_bytes)
                 tmp_path = tmp.name
             try:
-                infer_kwargs["ref_audio"] = tmp_path
-                if ref_text:
-                    infer_kwargs["ref_text"] = ref_text
+                # Turbo mode uses encode_reference() -> ref_codes, not ref_audio
+                ref_codes = engine.encode_reference(tmp_path)
+                infer_kwargs["ref_codes"] = ref_codes
+                logger.info("VieNeu: encoded reference audio -> ref_codes shape=%s", ref_codes.shape)
                 audio = engine.infer(**infer_kwargs)
             finally:
                 Path(tmp_path).unlink(missing_ok=True)
         elif voice_id:
+            logger.info("VieNeu: using preset voice '%s'", voice_id)
             voice = engine.get_preset_voice(voice_id)
             infer_kwargs["voice"] = voice
             audio = engine.infer(**infer_kwargs)
         else:
+            logger.info("VieNeu: using default voice (no ref_audio or voice_id)")
             audio = engine.infer(**infer_kwargs)
 
         return self._to_wav_bytes(audio)
