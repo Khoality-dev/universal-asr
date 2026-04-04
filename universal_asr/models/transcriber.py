@@ -76,7 +76,7 @@ class Transcriber:
 
         segments, info = model.transcribe(audio, **kwargs)
         text = "".join(segment.text for segment in segments).strip()
-        return text, info.language
+        return text, language or info.language
 
     def detect_language(
         self,
@@ -96,17 +96,17 @@ class Transcriber:
         if len(audio) > target_len:
             audio = audio[:target_len]
 
-        language, probs, *_ = model.detect_language(audio)
+        language, _top_prob, all_probs = model.detect_language(audio)
 
         if allowed_languages:
             # Filter to only allowed languages, pick highest probability
-            filtered = [(l, p) for l, p in probs if l in allowed_languages]
+            filtered = [(l, p) for l, p in all_probs if l in allowed_languages]
             if filtered:
-                language = filtered[0][0]  # probs already sorted by probability
-                probs = filtered
+                language = filtered[0][0]  # all_probs already sorted by probability
+                all_probs = filtered
 
-        confidence = next((p for l, p in probs if l == language), 0.0)
-        return language, confidence, probs
+        confidence = next((p for l, p in all_probs if l == language), 0.0)
+        return language, confidence, all_probs
 
     def loaded_models(self) -> list[str]:
         """Return names of currently loaded models."""
