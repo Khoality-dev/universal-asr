@@ -1,5 +1,6 @@
 """VieNeu-TTS model implementation."""
 
+import hashlib
 import io
 import logging
 import tempfile
@@ -29,6 +30,7 @@ class VieNeuTTSModel(BaseTTSModel):
         self._engine = None
         self._lock = threading.Lock()
         self._mode = config.TTS_MODE
+        self._ref_codes_cache: dict[str, np.ndarray] = {}  # hash -> ref_codes
 
     @property
     def model_id(self) -> str:
@@ -63,23 +65,30 @@ class VieNeuTTSModel(BaseTTSModel):
         infer_kwargs: dict = {"text": text}
 
         if ref_audio_bytes:
-            # Preserve original extension so VieNeu can detect the format
-            ref_filename = kwargs.get("ref_audio_filename", "")
-            suffix = Path(ref_filename).suffix if ref_filename else ".wav"
-            if not suffix:
-                suffix = ".wav"
-            logger.info("VieNeu: voice cloning with %d bytes ref audio (suffix=%s)", len(ref_audio_bytes), suffix)
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                tmp.write(ref_audio_bytes)
-                tmp_path = tmp.name
-            try:
-                # Turbo mode uses encode_reference() -> ref_codes, not ref_audio
-                ref_codes = engine.encode_reference(tmp_path)
-                infer_kwargs["ref_codes"] = ref_codes
-                logger.info("VieNeu: encoded reference audio -> ref_codes shape=%s", ref_codes.shape)
-                audio = engine.infer(**infer_kwargs)
-            finally:
-                Path(tmp_path).unlink(missing_ok=True)
+            # Cache ref_codes by content hash to avoid re-encoding the same voice
+            audio_hash = hashlib.md5(ref_audio_bytes).hexdigest()
+            ref_codes = self._ref_codes_cache.get(audio_hash)
+
+            if ref_codes is not None:
+                logger.info("VieNeu: using cached ref_codes for hash=%s", audio_hash[:8])
+            else:
+                ref_filename = kwargs.get("ref_audio_filename", "")
+                suffix = Path(ref_filename).suffix if ref_filename else ".wav"
+                if not suffix:
+                    suffix = ".wav"
+                logger.info("VieNeu: encoding ref audio (%d bytes, suffix=%s)", len(ref_audio_bytes), suffix)
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(ref_audio_bytes)
+                    tmp_path = tmp.name
+                try:
+                    ref_codes = engine.encode_reference(tmp_path)
+                    self._ref_codes_cache[audio_hash] = ref_codes
+                    logger.info("VieNeu: encoded -> ref_codes shape=%s, cached as %s", ref_codes.shape, audio_hash[:8])
+                finally:
+                    Path(tmp_path).unlink(missing_ok=True)
+
+            infer_kwargs["ref_codes"] = ref_codes
+            audio = engine.infer(**infer_kwargs)
         elif voice_id:
             logger.info("VieNeu: using preset voice '%s'", voice_id)
             voice = engine.get_preset_voice(voice_id)
