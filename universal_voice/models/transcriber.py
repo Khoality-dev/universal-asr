@@ -6,8 +6,8 @@ import threading
 import numpy as np
 from faster_whisper import WhisperModel
 
-from universal_asr import config
-from universal_asr.models.manager import model_manager
+from universal_voice import config
+from universal_voice.models.manager import model_manager
 
 logger = logging.getLogger(__name__)
 

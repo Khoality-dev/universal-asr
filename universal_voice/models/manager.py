@@ -7,7 +7,7 @@ import re
 import shutil
 import threading
 
-from universal_asr import config
+from universal_voice import config
 
 logger = logging.getLogger(__name__)
 

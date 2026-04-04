@@ -2,8 +2,9 @@
 
 from fastapi import APIRouter, HTTPException
 
-from universal_asr.models.manager import model_manager
-from universal_asr.models.transcriber import transcriber
+from universal_voice.models.manager import model_manager
+from universal_voice.models.transcriber import transcriber
+from universal_voice.tts.registry import tts_registry
 
 router = APIRouter(tags=["health"])
 
@@ -15,32 +16,36 @@ async def health():
 
 @router.get("/v1/models")
 async def list_models():
-    """List all models: loaded (in-memory) + cached (on disk)."""
+    """List all models (ASR + TTS)."""
     cached = model_manager.list_models()
     loaded = transcriber.loaded_models()
     cached_ids = {m["id"] for m in cached} | {m["name"] for m in cached}
 
     data = []
-    # Include loaded models that aren't in the cached list
-    # (standard Whisper sizes like "base" that faster-whisper manages)
+    # ASR models — loaded but not in cache list
     for name in loaded:
         if name not in cached_ids:
             data.append({
                 "id": name,
                 "object": "model",
+                "type": "asr",
                 "name": name,
                 "size_mb": None,
                 "loaded": True,
             })
-    # Include cached models
+    # ASR models — cached on disk
     for m in cached:
         data.append({
             "id": m["id"],
             "object": "model",
+            "type": "asr",
             "name": m["name"],
             "size_mb": m["size_mb"],
             "loaded": m["id"] in loaded or m["name"] in loaded,
         })
+
+    # TTS models
+    data.extend(tts_registry.list_models())
 
     return {"object": "list", "data": data}
 

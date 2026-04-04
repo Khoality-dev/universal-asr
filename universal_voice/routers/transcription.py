@@ -7,8 +7,8 @@ import numpy as np
 import soundfile as sf
 from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
 
-from universal_asr import config
-from universal_asr.models.transcriber import transcriber
+from universal_voice import config
+from universal_voice.models.transcriber import transcriber
 
 logger = logging.getLogger(__name__)
 
