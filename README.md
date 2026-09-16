@@ -1,5 +1,11 @@
 # Universal ASR
 
+> **Archived.** This service now lives in the KurisuAssistant monorepo as
+> [`voice/`](https://github.com/Khoality-dev/KurisuAssistant/tree/main/voice),
+> where it also runs its synthesis backends in-process. Development, issues and
+> releases happen there; this repository is kept read-only as history.
+
+
 A standalone speech recognition server that supports any Whisper-family model. Point it at a HuggingFace model ID and it handles downloading, converting, and serving — no manual setup required.
 
 ## Quick Start
